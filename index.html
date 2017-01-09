@@ -4,23 +4,43 @@
     <meta charset="utf-8">
     <title>Storage-experiments by eugeneo</title>
     <script lang="javascript">
-    function store() {
-      document.getElementById('info').textContent = 'Running';
-      window.localStorage.setItem('a', 'b');
-      navigator.storage.persisted().then(result => {
-        document.getElementById('info').textContent = result;
-        navigator.storage.persist().then(result => {
-          document.getElementById('info').textContent += ' ' + result;
-          navigator.storage.persisted().then(result => {
+      function persist() {
+        document.getElementById('info').textContent = 'Running';
+        window.localStorage.setItem('a', 'b');
+        navigator.storage.persisted().then(result => {
+          document.getElementById('info').textContent = result;
+          navigator.storage.persist().then(result => {
             document.getElementById('info').textContent += ' ' + result;
+            navigator.storage.persisted().then(result => {
+              document.getElementById('info').textContent += ' ' + result;
+            });
           });
         });
-      });
-    };
+      };
+
+      function store() {
+        let data = '';
+        for (let i = 0; i < 10000; i++) {
+          data += '1234567890 ';
+        }
+        for (let i = 0; i < 10; i++) {
+          window.localStorage.setItem('block ' + i, data);
+        }
+        console.log(navigator.storage);
+        navigator.webkitTemporaryStorage.queryUsageAndQuota(
+            (usage, quota) => {
+              document.getElementById('usage').textContent =
+                '' + usage + ' of ' + quota;
+            },
+            e => console.error(e)
+          );
+      }
     </script>
   </head>
   <body>
     <div id="info">Not ran</div>
-    <button onclick="store()">Click Me!</button>
+    <button onclick="persist()">Persist</button>
+    <div id="usage">Not ran</div>
+    <button onclick="store()">Store</button>
   </body>
 </html>
