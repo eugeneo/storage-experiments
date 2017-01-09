@@ -23,8 +23,13 @@
         for (let i = 0; i < 10000; i++) {
           data += '1234567890 ';
         }
+        let num = 1;
         for (let i = 0; i < 10; i++) {
-          window.localStorage.setItem('block ' + i, data);
+          let key = '';
+          do {
+            key = 'block ' + (num++);
+          } while (window.localStorage.getItem(key));
+          window.localStorage.setItem(key, data);
         }
         console.log(navigator.storage);
         navigator.webkitTemporaryStorage.queryUsageAndQuota(
