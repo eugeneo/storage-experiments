@@ -31,7 +31,6 @@
           } while (window.localStorage.getItem(key));
           window.localStorage.setItem(key, data);
         }
-        console.log(navigator.storage);
         navigator.webkitTemporaryStorage.queryUsageAndQuota(
             (usage, quota) => {
               document.getElementById('usage').textContent =
@@ -40,6 +39,54 @@
             e => console.error(e)
           );
       }
+
+      function storeIndexedDB() {
+        var req = window.indexedDB.open("TestDB", 2);
+        req.onerror = error => console.error(error);
+        req.onupgradeneeded = event => {
+          console.log('Upgrading!');
+          var db = event.target.result;
+          console.log('Database: ', db);
+
+          var objectStore =
+              db.createObjectStore('some-objects', { keyPath: 'idfield' });
+          objectStore.transaction.oncomplete = event => {
+            console.log('Transaction complete', event);
+            var anotherStore = db.transaction('some-objects', 'readwrite').
+                                   objectStore('some-objects');
+            for (var i = 0; i < 10000000; i++) {
+              anotherStore.add({id: 'someid' + i, name: 'Guy #' + i});
+            }
+            console.log('Done!');
+          }
+          console.log('Done!');
+        };
+        req.onsuccess = event => {
+          var db = event.target.result;
+          var anotherStore = db.transaction('some-objects', 'readwrite').
+                                 objectStore('some-objects');
+
+          var promises = [];
+          for (var i = 0; i < 10; i++) {
+            promises.push(new Promise((resolve, reject) => {
+              console.log('Writing', i);
+              var req = anotherStore.add({
+                  idfield: 'someid' + i,
+                  name: 'Guy #' + i
+              });
+              req.onsuccess = () => {
+                console.log('Done', i);
+                resolve();
+              };
+              req.onerror = error => {
+                console.log('Failed', i, error);
+                reject();
+              }
+            }));
+          }
+          Promise.all(promises).then(obj => console.log('All done', obj));
+        };
+      }
     </script>
   </head>
   <body>
@@ -47,5 +94,9 @@
     <button onclick="persist()">Persist</button>
     <div id="usage">Not ran</div>
     <button onclick="store()">Store</button>
+
+    <div id="indexDBUsage">Not ran</div>
+    <button onclick="storeIndexedDB()">Store IndexedDB</button>
+
   </body>
 </html>
