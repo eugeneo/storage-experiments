@@ -55,31 +55,47 @@
               console.log('Done', i);
               resolve();
             };
-            req.onerror = error => {
-              console.log('Failed', i, error);
-              reject();
-            }
+            req.onerror = reject;
           }));
         }
         Promise.all(promises).then(obj => console.log('All done', obj.length, 'records'));
       }
 
-      function storeIndexedDB() {
-        var req = window.indexedDB.open("TestDB", 2);
-        req.onerror = error => console.error(error);
-        req.onupgradeneeded = event => {
-          console.log('Upgrading!');
-          var db = event.target.result;
+      function createStore(db, name, options) {
+        return new Promise((resolve, reject) => {
+          var transaction = db.createObjectStore(name, options).transaction;
+          transaction.oncomplete = resolve;
+          transaction.onabort = transaction.onerror = reject;
+        });
+      }
 
-          var objectStore =
-              db.createObjectStore('some-objects', { keyPath: 'idfield' });
-          objectStore.transaction.oncomplete = event => {
-            console.log('Store added', event);
-            addEntries(db, 1, 100);
+      function prepareDataBase() {
+        return new Promise((resolve, reject) => {
+          var req = window.indexedDB.open("TestDB", 3);
+          req.onerror = reject;
+          req.onupgradeneeded = event => {
+            console.log('Upgrading!');
+            var db = event.target.result;
+            Promise.all([
+              createStore(db, 'some-objects', { keyPath: 'idfield' }),
+              createStore(db, 'auto-id-object', { autoIncrement: true })
+            ]).then(() => resolve(db), reject);
           };
-        };
-        req.onsuccess =
-            event => addEntries(event.target.result, 101, 300);
+          req.onsuccess = event => resolve(event.target.result);
+        });
+      }
+
+      function storeIndexedDB() {
+        prepareDataBase().then(db => addEntries(event.target.result, 0, 100));
+      }
+
+      function indexDBOneRecord() {
+        prepareDataBase().then(db => new Promise((resolve, reject) => {
+          const req = db.transaction('auto-id-object', 'readwrite')
+            .objectStore('auto-id-object').add({afield: new Date()});
+          req.onsuccess = resolve;
+          req.onerror = reject;
+        }));
       }
     </script>
   </head>
@@ -91,6 +107,9 @@
 
     <div id="indexDBUsage">Not ran</div>
     <button onclick="storeIndexedDB()">Store IndexedDB</button>
+
+    <div id="indexDBOneRecord">Not ran</div>
+    <button onclick="indexDBOneRecord()">Add one record</button>
 
   </body>
 </html>
